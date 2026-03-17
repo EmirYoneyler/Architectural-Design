@@ -1,6 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
-from pydantic import HttpUrl
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from app.worker.tasks import scrape_target_site
 
 app = FastAPI(title="High Availability Scraper Orchestrator")
@@ -23,5 +21,5 @@ async def get_scrape_task(job_id: str):
     return {
         "job_id": job_id,
         "state": res.state,
-        "result": res.result if res.state == "SUCCESS" else None
+        "result": res.result if res.state == "SUCCESS" else None,
     }
