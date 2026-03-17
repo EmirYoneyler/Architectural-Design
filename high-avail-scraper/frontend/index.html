@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scraper Live Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const Dashboard = () => {
+        return (
+          <div className="p-8 bg-slate-900 min-h-screen text-white">
+            <h1 className="text-3xl font-bold mb-6">Scraper Live Monitor</h1>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Stat Card */}
+              <div className="p-6 bg-slate-800 rounded-xl border border-emerald-500/30">
+                <p className="text-slate-400">Total Scraped</p>
+                <p className="text-4xl font-mono">14,205</p>
+              </div>
+              
+              <div className="p-6 bg-slate-800 rounded-xl border border-blue-500/30">
+                <p className="text-slate-400">Active Workers</p>
+                <p className="text-4xl font-mono">8</p>
+              </div>
+
+              <div className="p-6 bg-slate-800 rounded-xl border border-red-500/30">
+                <p className="text-slate-400">Blocked (429)</p>
+                <p className="text-4xl font-mono text-red-400">128</p>
+              </div>
+            </div>
+
+            {/* Live Logs Table */}
+            <div className="mt-10 bg-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full text-left">
+                <thead className="bg-slate-700">
+                  <tr>
+                    <th className="p-4">URL</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* API'den gelen veriler buraya map edilecek */}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<Dashboard />);
+    </script>
+  </body>
+</html>

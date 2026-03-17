@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Veritabanı: Verilerin kalbi
+  db:
+    image: postgres:15
+    container_name: scraper_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: scraper_db
+    ports:
+      - "5432:5432"
+
+  # Haberleşme: Servisler arası mesaj kuyruğu
+  redis:
+    image: redis:7
+    container_name: scraper_redis
+    ports:
+      - "6379:6379"
+
+  # Backend: API ve Görev Yönetimi
+  api:
+    build: .
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgresql://user:password@db/scraper_db
+
+  # Worker: Asıl kazıma işini yapan asenkron işçiler
+  worker:
+    build: .
+    command: celery -A app.worker.tasks worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    environment:
+      DATABASE_URL: postgresql://user:password@db/scraper_db
+
+  # Frontend: Dashboard arayüzü
+  dashboard:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
