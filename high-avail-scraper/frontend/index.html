@@ -14,40 +14,162 @@
 
     <script type="text/babel">
       const Dashboard = () => {
+        const API_BASE = "http://127.0.0.1:8000";
+        const [url, setUrl] = React.useState("");
+        const [submitting, setSubmitting] = React.useState(false);
+        const [error, setError] = React.useState("");
+        const [jobs, setJobs] = React.useState([]);
+
+        const addOrUpdateJob = React.useCallback((job) => {
+          setJobs((prev) => {
+            const index = prev.findIndex((item) => item.job_id === job.job_id);
+            if (index === -1) {
+              return [job, ...prev];
+            }
+            const updated = [...prev];
+            updated[index] = { ...updated[index], ...job };
+            return updated;
+          });
+        }, []);
+
+        const startScrape = async (event) => {
+          event.preventDefault();
+          setError("");
+
+          if (!url.trim()) {
+            setError("Please enter a URL.");
+            return;
+          }
+
+          try {
+            setSubmitting(true);
+            const targetUrl = url.trim();
+            const response = await fetch(`${API_BASE}/scrape?url=${encodeURIComponent(targetUrl)}`, {
+              method: "POST",
+            });
+
+            if (!response.ok) {
+              throw new Error(`API request failed: ${response.status}`);
+            }
+
+            const created = await response.json();
+            addOrUpdateJob({
+              job_id: created.task_id,
+              url: created.url,
+              state: created.status.toUpperCase(),
+              result: null,
+              created_at: new Date().toLocaleTimeString(),
+            });
+            setUrl("");
+          } catch (submitError) {
+            setError(submitError.message || "Failed to create scrape task.");
+          } finally {
+            setSubmitting(false);
+          }
+        };
+
+        React.useEffect(() => {
+          if (!jobs.length) {
+            return;
+          }
+
+          const pollingInterval = setInterval(async () => {
+            const pendingJobs = jobs.filter((job) => !["SUCCESS", "FAILURE"].includes(job.state));
+            if (!pendingJobs.length) {
+              return;
+            }
+
+            for (const job of pendingJobs) {
+              try {
+                const response = await fetch(`${API_BASE}/scrape/${job.job_id}`);
+                if (!response.ok) {
+                  continue;
+                }
+                const data = await response.json();
+                addOrUpdateJob({
+                  job_id: data.job_id,
+                  url: job.url,
+                  state: data.state,
+                  result: data.result,
+                  created_at: job.created_at,
+                });
+              } catch {
+              }
+            }
+          }, 2000);
+
+          return () => clearInterval(pollingInterval);
+        }, [jobs, addOrUpdateJob]);
+
+        const totalScraped = jobs.filter((job) => job.state === "SUCCESS").length;
+        const activeWorkers = jobs.filter((job) => ["PENDING", "STARTED", "RETRY"].includes(job.state)).length;
+        const blockedCount = jobs.filter((job) => job.result && job.result.status_code === 429).length;
+
         return (
           <div className="p-8 bg-slate-900 min-h-screen text-white">
             <h1 className="text-3xl font-bold mb-6">Scraper Live Monitor</h1>
+
+            <form onSubmit={startScrape} className="mb-6 flex flex-col md:flex-row gap-3">
+              <input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                type="url"
+                placeholder="https://example.com"
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {submitting ? "Submitting..." : "Start Scrape"}
+              </button>
+            </form>
+
+            {error && <p className="mb-6 text-red-400">{error}</p>}
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Stat Card */}
               <div className="p-6 bg-slate-800 rounded-xl border border-emerald-500/30">
                 <p className="text-slate-400">Total Scraped</p>
-                <p className="text-4xl font-mono">14,205</p>
+                <p className="text-4xl font-mono">{totalScraped}</p>
               </div>
               
               <div className="p-6 bg-slate-800 rounded-xl border border-blue-500/30">
                 <p className="text-slate-400">Active Workers</p>
-                <p className="text-4xl font-mono">8</p>
+                <p className="text-4xl font-mono">{activeWorkers}</p>
               </div>
 
               <div className="p-6 bg-slate-800 rounded-xl border border-red-500/30">
                 <p className="text-slate-400">Blocked (429)</p>
-                <p className="text-4xl font-mono text-red-400">128</p>
+                <p className="text-4xl font-mono text-red-400">{blockedCount}</p>
               </div>
             </div>
 
-            {/* Live Logs Table */}
             <div className="mt-10 bg-slate-800 rounded-xl overflow-hidden">
               <table className="w-full text-left">
                 <thead className="bg-slate-700">
                   <tr>
                     <th className="p-4">URL</th>
                     <th className="p-4">Status</th>
-                    <th className="p-4">Time</th>
+                    <th className="p-4">Result</th>
+                    <th className="p-4">Created</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* API'den gelen veriler buraya map edilecek */}
+                  {jobs.length === 0 ? (
+                    <tr>
+                      <td className="p-4 text-slate-400" colSpan="4">No jobs yet. Start a scrape to see live updates.</td>
+                    </tr>
+                  ) : (
+                    jobs.map((job) => (
+                      <tr key={job.job_id} className="border-t border-slate-700">
+                        <td className="p-4">{job.url}</td>
+                        <td className="p-4">{job.state}</td>
+                        <td className="p-4">{job.result ? `HTTP ${job.result.status_code}, ${job.result.data_length} bytes` : "-"}</td>
+                        <td className="p-4">{job.created_at}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

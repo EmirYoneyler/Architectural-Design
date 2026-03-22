@@ -10,9 +10,14 @@ class IdentityManager:
             "http://proxy2.example.com:8080",
             None    
         ]
-def get_random_identity(self):
-    return {
-        "user_agent": random.choice(self.user_agents),
-        "proxy": random.choice(self.proxies)
-    }
+
+    def get_random_identity(self):
+        return {
+            "user_agent": random.choice(self.user_agents),
+            "proxy": random.choice(self.proxies)
+        }
+
+    def get_identity(self):
+        return self.get_random_identity()
+
 identity_manager = IdentityManager()
