@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.worker.tasks import scrape_target_site
+from app.core.database import SessionLocal, ScrapeLog
 
 app = FastAPI(title="High Availability Scraper Orchestrator")
 
@@ -32,3 +33,9 @@ async def get_scrape_task(job_id: str):
         "state": res.state,
         "result": res.result if res.state == "SUCCESS" else None
     }
+@app.get("/logs")
+def get_all_logs():
+    db = SessionLocal()
+    logs = db.query(ScrapeLog).all()
+    db.close()
+    return logs
